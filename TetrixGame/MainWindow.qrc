@@ -1,0 +1,12 @@
+<RCC>
+    <qresource prefix="/images">
+        <file>source/tetrixbg.png</file>
+        <file>source/tetrixIcon.png</file>
+    </qresource>
+    <qresource prefix="/sounds">
+        <file>source/down.wav</file>
+        <file>source/gameover.wav</file>
+        <file>source/remove.wav</file>
+        <file>source/tetrix.mp3</file>
+    </qresource>
+</RCC>
