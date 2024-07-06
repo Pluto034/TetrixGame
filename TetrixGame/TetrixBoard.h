@@ -4,8 +4,12 @@
 #include <QLabel>
 #include<QPointer>
 #include<QPainter>
+#include<QKeyEvent>
+#include<qsoundeffect.h>
 #include"tetrixpiece.h"
 #include<qbasictimer.h>
+#include <QMediaPlayer>
+#include <QAudioOutput>
 class TetrixBoard  : public QFrame
 {
 	Q_OBJECT
@@ -26,6 +30,7 @@ signals:
 protected:
 	void paintEvent(QPaintEvent* event) override;
 	void timerEvent(QTimerEvent* event) override;
+	void keyPressEvent(QKeyEvent* event) override;
 private:
 	int squareWidth() {
 		return contentsRect().width() / BoardWidth;
@@ -48,6 +53,7 @@ private:
 	void onLineDown();
 	bool tryMove(const TetrixPiece &newPiece,int newX,int newY);
 	void pieceDropped(int dropHeight);
+	void dropDown();
 private:
 	enum {
 		DropSCore = 7, BoardWidth = 12,
@@ -67,4 +73,9 @@ private:
 	int m_level = 1;
 	QBasicTimer timer;
 
+	QMediaPlayer m_bgMusic;
+	QAudioOutput m_audioOutput;
+	QSoundEffect m_removeSound;
+	QSoundEffect m_downSound;
+	QSoundEffect m_gameOverSound;
 };

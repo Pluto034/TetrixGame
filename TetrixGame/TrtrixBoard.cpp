@@ -1,9 +1,20 @@
-#include "TetrixBoard.h"
+ï»¿#include "TetrixBoard.h"
 #include<QPainter>
 TetrixBoard::TetrixBoard(QWidget *parent)
 	: QFrame(parent)
 {
 	m_nextPiece.setRandomShape();
+	clearBoard();
+	setFocusPolicy(Qt::StrongFocus); 
+
+	m_bgMusic.setMedia(QUrl("./source/tetrix.mp3"));
+
+	m_bgMusic.setVolume(20);
+
+	m_removeSound.setSource(QUrl("./source/remove.wav"));
+	m_downSound.setSource(QUrl("./source/down.wav"));
+	m_gameOverSound.setSource(QUrl("./source/tetrix.mp3"));
+
 }
 
 void TetrixBoard::setNextPieceLabel(QLabel * label)
@@ -37,6 +48,38 @@ void TetrixBoard::showNextPiece()
 
 void TetrixBoard::removeFullLines()
 {
+	int numFullLines = 0;
+	//æ¶ˆé™¤è¡Œ
+	for (int i = BoardHeight - 1; i >= 0; i--) {
+		bool lineIsFull = true;
+		//æ‰«æä¸€è¡Œ
+		for (int j = 0; j < BoardWidth; j++) {
+			if (shapeAt(j, i) == NoShape) {
+				lineIsFull = false;
+				break;
+			}
+		}
+		if (lineIsFull) {
+			m_removeSound.play();
+			++numFullLines;
+			for (int k = i; k < BoardHeight - 1; k++) {
+				for (int j = 0; j < BoardWidth; j++) {
+					shapeAt(j, k) = shapeAt(j, k + 1);
+				}
+			}
+			for (int j = 0; j < BoardWidth; j++)
+				shapeAt(j, BoardHeight - 1) = NoShape;
+		}
+	}
+
+
+
+	if (numFullLines > 0) {
+		m_numLineRemoved += numFullLines;
+		m_score += 10 * numFullLines;
+		emit linesRemoved(m_numLineRemoved);
+		emit scoreChanged(m_score);
+	}
 }
 
 void TetrixBoard::clearBoard()
@@ -59,12 +102,13 @@ void TetrixBoard::newPiece()
 	m_curX = BoardWidth / 2;
 	m_curY = BoardHeight - 1 + m_curPiece.minY();
 
-	//°ÑnewPiece·ÅÈëÆğÊ¼Î»ÖÃ
+	//æŠŠnewPieceæ”¾å…¥èµ·å§‹ä½ç½®
 	if(!tryMove(m_curPiece,m_curX,m_curY)) {
-		//ÓÎÏ·½áÊø
-		timer.stop();
-		m_isStarted = false;
-
+		//æ¸¸æˆç»“æŸ
+ 		timer.stop();
+ 		m_isStarted = false;
+		m_bgMusic.stop();
+		m_gameOverSound.play();
 	}
 }
 
@@ -97,7 +141,7 @@ void TetrixBoard::onLineDown()
 
 bool TetrixBoard::tryMove(const TetrixPiece& newPiece, int newX, int newY)
 {
-	//ÅĞ¶Ï¿ÉÒÔÒÆ¶¯
+	//åˆ¤æ–­å¯ä»¥ç§»åŠ¨
 	for (int i = 0; i < 4; i++) {
 		int x = newX + newPiece.x(i);
 		int y = newY - newPiece.y(i);
@@ -108,7 +152,7 @@ bool TetrixBoard::tryMove(const TetrixPiece& newPiece, int newX, int newY)
 			return false;
 		}
 	}
-	m_curPiece = newPiece;//Ğı×ªÊ±ĞèÒª
+	m_curPiece = newPiece;//æ—‹è½¬æ—¶éœ€è¦
 	m_curX = newX;
 	m_curY = newY;
 	update(); 
@@ -116,6 +160,7 @@ bool TetrixBoard::tryMove(const TetrixPiece& newPiece, int newX, int newY)
 }
 void TetrixBoard::pieceDropped(int dropHeight)
 {
+	m_downSound.play();
 	for (int i = 0; i < 4; i++) {
 		int x = m_curX + m_curPiece.x(i);
 		int y = m_curY - m_curPiece.y(i);
@@ -135,12 +180,25 @@ void TetrixBoard::pieceDropped(int dropHeight)
 	removeFullLines();
 	newPiece();
 }
+void TetrixBoard::dropDown()
+{
+	int newY = m_curY;
+	int dropHeight = 0;
+	while (newY > 0) {
+		if (!tryMove(m_curPiece, m_curX, m_curY - 1))
+			break;
+		--newY;
+		++dropHeight;
+	}
+	pieceDropped(dropHeight);
+}
 void TetrixBoard::start()
 {
 	if (m_isStarted || m_isPaused) {
 		return;
 	}
 	m_isStarted = true;
+	m_bgMusic.play();
 	m_numLineRemoved = 0;
 	m_numPieceDropped = 0;
 	m_score = 0;
@@ -156,6 +214,20 @@ void TetrixBoard::start()
 }
 void TetrixBoard::pause()
 {
+	if (!m_isStarted) {
+		return;
+	}
+	m_isPaused ^= 1;//åˆ‡æ¢çŠ¶æ€
+	if (m_isPaused) {
+		m_bgMusic.stop();
+		timer.stop();
+	}
+	else {
+		m_bgMusic.play();
+		timer.start(timeoutTime(), this);
+	}
+	update();
+
 }
 
 void TetrixBoard::paintEvent(QPaintEvent* event)
@@ -165,12 +237,9 @@ void TetrixBoard::paintEvent(QPaintEvent* event)
 	QPainter painter(this);
 	QRect rect = contentsRect();
 
-	if (m_isPaused) {
-		painter.drawText(rect, Qt::AlignCenter, "ÔİÍ£ÖĞ...");
-		return;
-	}
+
 	int boardTop = rect.bottom() - BoardHeight * squareHeight();
-	//»æÖÆÏÖÓĞµÄ·½¿é£¬°ÑÕû¸öTetrixBoard»æÖÆÒ»ÏÂ
+	//ç»˜åˆ¶ç°æœ‰çš„æ–¹å—ï¼ŒæŠŠæ•´ä¸ªTetrixBoardç»˜åˆ¶ä¸€ä¸‹
 	for (int i = 0; i < BoardHeight; ++i)
 		for (int j = 0; j < BoardWidth; ++j) {
 			TetrixShape shape = shapeAt(j, i/*BoardHeight-i-1*/);
@@ -178,16 +247,20 @@ void TetrixBoard::paintEvent(QPaintEvent* event)
 				drawSquare(painter, rect.left() + j * squareWidth(),
 					rect.bottom() - (i + 1) * squareHeight()/*rect.top()+i*squareHeight()*/, shape);
 		}
-	//»æÖÆÕıÔÚÏÂÂäµÄ·½¿é£¬newPiece,curPiece
+	//ç»˜åˆ¶æ­£åœ¨ä¸‹è½çš„æ–¹å—ï¼ŒnewPiece,curPiece
 	if (m_curPiece.shape() != NoShape) {
 		for (int i = 0; i < 4; ++i) {
 			int x = m_curX + m_curPiece.x(i);
 			int y = m_curY - m_curPiece.y(i);
-			//x,yµ¥Î»ÊÇĞ¡¿é£¬drawÀïÓÃµÄÊÇÏñËØ
+			//x,yå•ä½æ˜¯å°å—ï¼Œdrawé‡Œç”¨çš„æ˜¯åƒç´ 
 			drawSquare(painter, rect.left() + x * squareWidth()
 				, boardTop + (BoardHeight - y - 1) * squareHeight()
 				, m_curPiece.shape());
 		}
+	}
+	if (m_isPaused) {
+		painter.drawText(rect, Qt::AlignCenter, u8"æš‚åœä¸­...");
+		return;
 	}
 }
 
@@ -195,7 +268,35 @@ void TetrixBoard::timerEvent(QTimerEvent* event)
 {
 	if (m_isStarted) {
 		onLineDown();
-		update();
 	}
+}
+
+void TetrixBoard::keyPressEvent(QKeyEvent* event)
+{
+	if (!m_isStarted || m_isPaused || m_curPiece.shape() == NoShape()) {
+		QFrame::keyPressEvent(event);
+		return;
+	}
+	switch (event->key())
+	{
+	case Qt::Key_Left:
+		tryMove(m_curPiece, m_curX - 1, m_curY );
+		break;
+	case Qt::Key_Right:
+		tryMove(m_curPiece, m_curX + 1, m_curY);
+		break;
+	case Qt::Key_Up:
+		tryMove(m_curPiece.rotatedLeft(), m_curX, m_curY);
+		break;
+	case Qt::Key_Down:
+		onLineDown();
+		break;
+	case Qt::Key_Space:
+		dropDown();
+		break;
+
+	default:
+		QFrame::keyPressEvent(event);
+	};
 }
 

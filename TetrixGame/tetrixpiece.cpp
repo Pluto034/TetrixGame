@@ -74,6 +74,7 @@ TetrixPiece TetrixPiece::rotatedLeft() const
     if (m_pieceShape == SquareShape) return *this;
 
     TetrixPiece result;
+    result.setShape(m_pieceShape);
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 2; j++) {
             result.setX(i,y(i));
@@ -83,19 +84,4 @@ TetrixPiece TetrixPiece::rotatedLeft() const
     return result;
 }
 
-TetrixPiece TetrixPiece::rotatedRight() const
-{
 
-    //-y,x
-    if (m_pieceShape == SquareShape) return *this;
-
-    TetrixPiece result;
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 2; j++) {
-            result.setX(i, -y(i));
-            result.setY(i, x(i));
-        }
-    }
-    return result;
-    
-}

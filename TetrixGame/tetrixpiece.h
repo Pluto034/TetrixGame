@@ -23,7 +23,6 @@ public:
 		return m_pieceShape;
 	}
 	TetrixPiece rotatedLeft() const;
-	TetrixPiece rotatedRight() const;
 private:
 	void setX(int index, int value) {
 		m_coords[index][0] = value;
