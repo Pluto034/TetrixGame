@@ -9,11 +9,11 @@ TetrixBoard::TetrixBoard(QWidget *parent)
 
 	m_bgMusic.setMedia(QUrl("./source/tetrix.mp3"));
 
-	m_bgMusic.setVolume(20);
+	m_bgMusic.setVolume(0);
 
-	m_removeSound.setSource(QUrl("./source/remove.wav"));
-	m_downSound.setSource(QUrl("./source/down.wav"));
-	m_gameOverSound.setSource(QUrl("./source/tetrix.mp3"));
+	m_removeSound.setSource(QUrl::fromLocalFile("./source/remove.wav"));
+	m_downSound.setSource(QUrl::fromLocalFile("./source/down.wav"));
+	m_gameOverSound.setSource(QUrl::fromLocalFile("./source/gameover.wav"));
 
 }
 
@@ -106,7 +106,7 @@ void TetrixBoard::newPiece()
 	if(!tryMove(m_curPiece,m_curX,m_curY)) {
 		//游戏结束
  		timer.stop();
- 		m_isStarted = false;
+		m_isStarted = false;
 		m_bgMusic.stop();
 		m_gameOverSound.play();
 	}
